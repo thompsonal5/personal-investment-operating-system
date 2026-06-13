@@ -1,0 +1,65 @@
+name: PIOS Fortress Edition — CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  risk-guardrails:
+    name: Risk Guardrail Tests (must pass — blocks all deployments)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Risk Guardrail Tests
+        run: |
+          pytest governance-protocol/tests/test_validators.py \
+            -v \
+            --tb=short \
+            --strict-markers \
+            -x
+        env:
+          ENVIRONMENT: test
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    needs: risk-guardrails
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install flake8
+      - run: flake8 . --max-line-length=100 --exclude=.github,__pycache__
+
+  full-test-suite:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    needs: risk-guardrails
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Run all tests
+        run: pytest --tb=short -v
+        env:
+          ENVIRONMENT: test
