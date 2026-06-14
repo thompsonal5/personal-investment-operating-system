@@ -113,9 +113,23 @@ def main():
         vix = float((vix_quote or {}).get("last_trade_price", 20.0))
         iwm_quote = chain.get_quote("IWM")
         iwm_change = float((iwm_quote or {}).get("change_pct", 0.0))
-        regime = classify_regime(vix=vix, day_of_week=date.today().weekday(), iwm_change_pct=iwm_change)
+
+        # P1 secondary sentiment signals — sourced via web search (no direct
+        # MCP feed for CNN Fear & Greed Index or CBOE Equity Put/Call Ratio)
+        fear_greed_index = None   # populate via web search: "CNN Fear and Greed Index"
+        put_call_ratio   = None   # populate via web search: "CBOE Equity Put Call Ratio"
+
+        regime = classify_regime(
+            vix=vix,
+            day_of_week=date.today().weekday(),
+            fear_greed_index=fear_greed_index,
+            put_call_ratio=put_call_ratio,
+            iwm_change_pct=iwm_change,
+        )
         logger.info(f"P1 Regime: {regime.regime.value} | VIX={vix:.2f} | Mode={regime.session_mode.value}")
         print(f"\nP1 REGIME: {regime.regime.value} — {regime.notes}")
+        for flag in regime.divergence_flags:
+            print(f"  {flag}")
 
         if not regime.is_premium_friendly:
             logger.warning("DEFENSIVE regime — reduce size or stand aside.")
